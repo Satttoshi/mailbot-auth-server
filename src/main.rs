@@ -1,8 +1,8 @@
 mod db;
 
-use actix_web::{web, App, HttpServer, Responder, HttpResponse};
-use mongodb::Client;
+use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use db::{create_mongo_client, create_user, find_user_by_username, User};
+use mongodb::Client;
 
 async fn index() -> impl Responder {
     HttpResponse::Ok().body("Hello world!")
@@ -10,7 +10,9 @@ async fn index() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let mongo_client = create_mongo_client().await.expect("Failed to connect to MongoDB");
+    let mongo_client = create_mongo_client()
+        .await
+        .expect("Failed to connect to MongoDB");
     let mongo_data = web::Data::new(mongo_client);
 
     HttpServer::new(move || {
@@ -20,13 +22,22 @@ async fn main() -> std::io::Result<()> {
             .route("/create_user", web::post().to(create_user_handler))
             .route("/get_user/{username}", web::get().to(get_user_handler))
     })
-        .bind("127.0.0.1:8080")?
-        .run()
-        .await
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
 }
 
-async fn create_user_handler(data: web::Data<Client>, web::Json(user_data): web::Json<User>) -> impl Responder {
-    let result = create_user(&data, &user_data.username, &user_data.email , &user_data.password).await;
+async fn create_user_handler(
+    data: web::Data<Client>,
+    web::Json(user_data): web::Json<User>,
+) -> impl Responder {
+    let result = create_user(
+        &data,
+        &user_data.username,
+        &user_data.email,
+        &user_data.password,
+    )
+    .await;
     match result {
         Ok(_) => HttpResponse::Created().body("User created successfully"),
         Err(e) => HttpResponse::InternalServerError().body(e.to_string()),
